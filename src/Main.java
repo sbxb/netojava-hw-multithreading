@@ -1,10 +1,10 @@
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
 
 public class Main {
     public static void main(String[] args) throws InterruptedException {
@@ -15,9 +15,11 @@ public class Main {
 
         long startTs = System.currentTimeMillis(); // start time
         // ----------------------------------------------------------------------
+        final int numThreads = Math.max(2, Runtime.getRuntime().availableProcessors());
+        final ExecutorService threadPool = Executors.newFixedThreadPool(numThreads);
         List<Future<Integer>> futures = new ArrayList<>(texts.length);
         for (String text : texts) {
-            FutureTask<Integer> future = new FutureTask<>(() -> {
+            Future<Integer> task = threadPool.submit(() -> {
                 int maxSize = 0;
                 for (int i = 0; i < text.length(); i++) {
                     for (int j = 0; j < text.length(); j++) {
@@ -39,8 +41,7 @@ public class Main {
                 System.out.println(text.substring(0, 100) + " -> " + maxSize);
                 return maxSize;
             });
-            new Thread(future).start();
-            futures.add(future);
+            futures.add(task);
         }
 
         int maxInterval = 0;
@@ -51,6 +52,7 @@ public class Main {
         } catch (ExecutionException e) {
             throw new RuntimeException("Cannot calculate max interval using multiple threads");
         }
+        threadPool.shutdown();
         System.out.println("Max interval = " + maxInterval);
         // ----------------------------------------------------------------------
         long endTs = System.currentTimeMillis(); // end time
